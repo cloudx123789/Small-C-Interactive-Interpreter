@@ -405,8 +405,22 @@ class REPL:
                                self.interactive_interp.symtable.scopes[0])
         interp = self.interactive_interp if has_interactive else (
                  self.last_interpreter if self.last_interpreter else self.interactive_interp)
-        funcs    = interp.functions
+        funcs    = dict(interp.functions)
         builtins = interp.builtins.functions
+
+        # 若緩衝區有程式碼但尚未 RUN，臨時解析取出函式定義
+        if self.source_lines and not funcs:
+            try:
+                from lexer import Lexer
+                from parser import Parser, preprocess
+                from interpreter import FuncDecl
+                src = preprocess('\n'.join(self.source_lines))
+                ast = Parser(Lexer(src).tokenize()).parse_program()
+                for decl in ast.declarations:
+                    if isinstance(decl, FuncDecl):
+                        funcs[decl.name.value] = decl
+            except Exception:
+                pass
 
         print("--- user-defined functions ---")
         if not funcs:
@@ -422,18 +436,37 @@ class REPL:
 
         print("--- built-in functions ---")
         builtin_sigs = {
-            'printf':'void printf(char *fmt, ...)','scanf':'int scanf(char *fmt, ...)',
-            'putchar':'int putchar(int ch)','getchar':'int getchar()',
-            'puts':'int puts(char *s)',
-            'strlen':'int strlen(char *s)','strcpy':'void strcpy(char *dst, char *src)',
-            'strcmp':'int strcmp(char *s1, char *s2)','strcat':'void strcat(char *dst, char *src)',
-            'abs':'int abs(int x)','max':'int max(int a, int b)','min':'int min(int a, int b)',
-            'pow':'int pow(int base, int exp)','sqrt':'int sqrt(int x)',
-            'mod':'int mod(int a, int b)','rand':'int rand()','srand':'void srand(int seed)',
-            'atoi':'int atoi(char *s)','itoa':'void itoa(int val, char *str)',
-            'memset':'void memset(char *ptr, int val, int n)',
-            'sizeof_int':'int sizeof_int()','sizeof_char':'int sizeof_char()',
-            'exit':'void exit(int code)',
+            'printf':     'void printf(char *fmt, ...)',
+            'scanf':      'int scanf(char *fmt, ...)',
+            'putchar':    'int putchar(int ch)',
+            'getchar':    'int getchar()',
+            'puts':       'int puts(char *s)',
+            'strlen':     'int strlen(char *s)',
+            'strcpy':     'void strcpy(char *dst, char *src)',
+            'strcmp':     'int strcmp(char *s1, char *s2)',
+            'strcat':     'void strcat(char *dst, char *src)',
+            'abs':        'int abs(int x)',
+            'max':        'int max(int a, int b)',
+            'min':        'int min(int a, int b)',
+            'pow':        'int pow(int base, int exp)',
+            'sqrt':       'int sqrt(int x)',
+            'mod':        'int mod(int a, int b)',
+            'sin':        'int sin(int x)',
+            'cos':        'int cos(int x)',
+            'tan':        'int tan(int x)',
+            'rand':       'int rand()',
+            'srand':      'void srand(int seed)',
+            'isalpha':    'int isalpha(int c)',
+            'isdigit':    'int isdigit(int c)',
+            'atoi':       'int atoi(char *s)',
+            'itoa':       'void itoa(int val, char *str)',
+            'memset':     'void memset(char *ptr, int val, int n)',
+            'sizeof_int': 'int sizeof_int()',
+            'sizeof_char':'int sizeof_char()',
+            'malloc':     'int malloc(int size)',
+            'free':       'void free(int ptr)',
+            'time':       'int time(int ptr)',
+            'exit':       'void exit(int code)',
         }
         for name in builtins:
             sig = builtin_sigs.get(name, f"? {name}(...)")
